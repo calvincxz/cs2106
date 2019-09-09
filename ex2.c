@@ -23,10 +23,11 @@ void freeTokenArray(char** strArr, int size);
 
 int main() {
 
-    char *input = (char*)malloc(200);
+    char input[200];
     int* tokenNum;
     struct stat *buf; 
     char **tokenStrArr;
+    
     
 
     //read user input
@@ -44,13 +45,14 @@ int main() {
         //printf("stat: %d", stat(tokenStrArr[0], buf));
         int i = stat(tokenStrArr[0], buf);
         if ( i == 0) {
-        	printf("inside if statement\n");
-        	printf("%s", tokenStrArr[0]);
-        	printf("%s", tokenStrArr[1]);
-        	printf("%s", tokenStrArr[2]);
+            printf("inside if statement\n");
+            printf("%s\n", tokenStrArr[0]);
+            printf("%s\n", tokenStrArr[1]);
+            printf("%s\n", tokenStrArr[2]);
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
-                wait(NULL); // Wait for process termination
+                int *status;
+                waitpid(pid, status, WNOHANG); // Wait for process termination
                 //free(input);
                 //char *input = (char*)malloc(200);
             } else {
@@ -69,7 +71,7 @@ int main() {
                 wait(NULL); // Wait for process termination
             } else {
                     //if(execvp(tokenStrArr[0], tokenStrArr) == -1){ 
-            	execl(temp, tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
+                execl(temp, tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
                     //printf("%s not found", tokenStrArr[0]); // Display error message
                     exit(0);
             }
@@ -105,7 +107,7 @@ char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* bu
     tokenStrArr = (char**) malloc(sizeof(char*) * maxTokenNum);
     
     //Nullify all entries
-    for (int i = 0; i < maxTokenNum; i++) {
+    for (i = 0; i < maxTokenNum; i++) {
         tokenStrArr[i] = NULL;
     }
 
@@ -147,5 +149,4 @@ void freeTokenArray(char** tokenStrArr, int size) {
     //Note: Caller still need to set the strArr parameter to NULL
     //      afterwards
 }
-
 
