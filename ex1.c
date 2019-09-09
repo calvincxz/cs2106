@@ -26,7 +26,10 @@ int main(int argc, char **argv) {
     int fd = 0;
     FILE *fd2;
     char who[50];
+    int pid;
     int i;
+    char charBuf = 0;
+    char strBuf[128];
     
     if (argc < 3)
     {
@@ -37,91 +40,93 @@ int main(int argc, char **argv) {
     fileName = argv[1];
     nChild = atoi(argv[2]);
 
-    fd = open( fileName, O_RDONLY );
+    fd = open( fileName, O_RDONLY ); 
     //TODO check the error code
     //TODO add your code
-    for (i=0; i<nChild; i++) 
-    { 
-        //pid = fork();
-        //childPid[i] = pid;
-    if(fork() == 0) //child
-        { 
-            sprintf(who, "Child %d [%d]", i+1, getpid());
-            readFromFile(who, fd );
-            printf( "Parent: %s done\n", who);
-            //close (fd);
-            //exit(0);
-
-            exit(0); 
-        } 
-    }
     sprintf(who, "Parent [%d]", getpid());
-	readFromFile(who, fd );
-    close (fd);
-
-    fd2 = fopen(fileName, "r");
-    for (i=0; i<nChild; i++) { 
-    	if(fork() == 0) //child
-        { 
-            sprintf(who, "Child %d [%d]", i+1, getpid());
-            readFromFile2(who, fd2);
-            printf( "Parent: %s done\n", who);
-            //close (fd);
-            //exit(0);
-
-            //exit(0); 
-        } 
+    read(fd, &charBuf, 1 );
+    sprintf(strBuf, "%s: %c\n", who, charBuf);
+    write (STDOUT_FILENO, strBuf, strlen(strBuf));
+    for (i=0; i < nChild; i++) {
+        pid = fork();
+        if (pid == 0) {
+            break;
+        }
     }
 
-    sprintf(who, "Parent [%d]", getpid());
-	readFromFile2(who, fd2 );
-    close (fd);
+    if (pid == 0) {
+        sprintf(who, "Child %d [%d]", i+1, getpid());
+        readFromFile(who, fd );
+        printf( "Parent: %s done\n", who);
+        exit(0);
+        
+    } else {
+        
+        readFromFile(who, fd );
+        close (fd);
+    }
 
+    // part2 using fopen,fread..
+    for (i=0; i < nChild; i++) {
+        pid = fork();
+        fd2 = fopen(fileName, "r"); 
+        if (pid == 0) {
+            break;
+        }
+    }
 
+    if (pid == 0) {
+        sprintf(who, "Child %d [%d]", i+1, getpid());
+        readFromFile2(who, fd2);
+        usleep(5000);
+        printf( "Parent: %s done\n", who);
+        exit(0);
+    } else {
+        sprintf(who, "Parent [%d]", getpid());
+        readFromFile2(who, fd2);
+        while (wait(NULL) > 0);
+        fclose (fd2);
+        printf("Parent: Exiting\n");
+    }
+
+    
+    
 }   
 
 void readFromFile (char who[50], int fd) 
 {
-	ssize_t readBytes = 1;
-	char charBuf = 0;
+    ssize_t readBytes = 1;
+    char charBuf = 0;
     char strBuf[128];
 
-	while (readBytes > 0) {
-		usleep (1000);
-		charBuf = 0;
-		readBytes = read( fd, &charBuf, 1 );
-
-		if( readBytes != 1 ) 
+    while (readBytes > 0) {
+        usleep (1000);
+        charBuf = 0;
+        readBytes = read( fd, &charBuf, 1 );
+        if( readBytes != 1 ) 
         {
-			if( readBytes == 0 ) 
+            if( readBytes == 0 ) 
             {
-				//printf( "EOF\n");
-				return;
-			}
-		}
+                return;
+            }
+        }
         sprintf(strBuf, "%s: %c\n", who, charBuf);
-	    write (STDOUT_FILENO, strBuf, strlen(strBuf));
-		//exit(0);
-	}
+        write (STDOUT_FILENO, strBuf, strlen(strBuf));
+        //exit(0);
+    }
 }
 
 void readFromFile2 (char who[50], FILE *fd) 
 {
     char strBuf[128];
-    char buffer[5];
-    int i;
+    char buffer[100];
+    char c;
 
-	//charBuf = 0;
-	fread(buffer, 1, 5, fd);
-	sprintf(strBuf, "%s: %c\n", who, buffer[0]);
-	fwrite(strBuf, strlen(strBuf)+1, 1, stdout);
-	for (i = 0; i < 5; i++) {
-		usleep (1000);
-		fread(buffer+i, 1, 1, fd);
-		sprintf(strBuf, "%s: %c\n", who, buffer[i]);
-		fwrite(strBuf, strlen(strBuf)+1, 1, stdout);
-		//exit(0);
-	}
-
-	//exit(0);
+    while( fread(&c, 1, 1, fd) == 1 )
+    {
+        usleep (1000);
+        sprintf(strBuf, "%s: %c\n", who, c);
+        fwrite(strBuf, strlen(strBuf)+1, 1, stdout);
+    }
+    //exit(0);
 }
