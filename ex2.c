@@ -19,18 +19,62 @@
 
 char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer);
 void freeTokenArray(char** strArr, int size);
-int* readTokenNum;
-char** tokenStrArr;
-int commandFound;
-struct stat buf;
+
 
 int main() {
+
     char* input;
+    int* tokenNum;
+    char** tokenStrArr;
+    struct stat *buf; 
+
+    //read user input
+    printf("GENIE > ");
     scanf("%s", input);
-    while(strcmp(input,"quit")!= 0) {
-        tokenStrArr = readTokens(10, 20, readTokenNum, input);
-        if (strchr(tokenStrArr[0],'/') != NULL) { //found in bin
-            if (stat(strcat("/bin/",tokenStrArr[0]), &buf) == 0) {
+    while(strcmp(input,"quit") != 0) {
+
+        //Handle 'R' Request
+        tokenStrArr = (char**) malloc(sizeof(char*) * 10);
+        tokenStrArr = readTokens(10, 20, tokenNum, input);
+
+        if (stat(tokenStrArr[0], buf) == 0) {
+            printf("aaa");
+            int pid = fork(); // Create a new process
+            if (pid != 0) { // parent
+                int s;
+                waitpid(-1, &s, 0); // Wait for process termination
+            } else {
+                execvp(tokenStrArr[0], tokenStrArr);
+            }
+        } else {
+            char* temp;
+            temp = strcat("/usr/bin/",tokenStrArr[0]);
+            free(tokenStrArr[0]);
+            tokenStrArr[0] = temp;
+            int pid = fork(); // Create a new process
+            if (pid != 0) { // parent
+                int s;
+                waitpid(-1, &s, 0); // Wait for process termination
+            } else {
+                    if(execvp(tokenStrArr[0], tokenStrArr) == -1){ 
+                    perror("Wrong command"); // Display error message
+                    exit(0);
+                }               
+            }
+        }
+        free(tokenStrArr);
+        
+        printf("GENIE > ");
+        scanf("%c", &input);
+    }
+    
+    printf("Goodbye!\n");
+    return 0;
+
+    /*while(strcmp(input,"quit")!= 0) {
+        tokenStrArr = readTokens(10, 20, tokenNum, input);
+        if (strchr(tokenStrArr[0],'/') != NULL) { 
+            if (stat(strcat("/bin/",tokenStrArr[0]), &buf) == 0) { //found in bin
                 if (fork() == 0) {
                     execl(strcat("/bin/",tokenStrArr[0]), tokenStrArr[0], NULL);
                 }
@@ -46,10 +90,8 @@ int main() {
 
         }
         scanf("%s", input);
-    }
-    printf("Goodbye!");
+    }*/
 
-    return 0;
 
 
 
