@@ -23,10 +23,11 @@ void freeTokenArray(char** strArr, int size);
 
 int main() {
 
-    char* input;
+    char *input = (char*)malloc(200);
     int* tokenNum;
-    char** tokenStrArr;
     struct stat *buf; 
+    char **tokenStrArr;
+    
 
     //read user input
     printf("GENIE > ");
@@ -34,67 +35,54 @@ int main() {
     while(strcmp(input,"quit") != 0) {
 
         //Handle 'R' Request
-        tokenStrArr = (char**) malloc(sizeof(char*) * 10);
-        tokenStrArr = readTokens(10, 20, tokenNum, input);
-
-        if (stat(tokenStrArr[0], buf) == 0) {
-            printf("aaa");
+        buf = malloc(sizeof(struct stat));
+        tokenNum = malloc(sizeof(int));
+        tokenStrArr = readTokens(10, 19, tokenNum, input);
+        //printf("aaa");
+        //printf("%s", tokenStrArr[0]);
+        //freeTokenArray(arr, *tokenNum);
+        //printf("stat: %d", stat(tokenStrArr[0], buf));
+        int i = stat(tokenStrArr[0], buf);
+        if ( i == 0) {
+        	printf("inside if statement\n");
+        	printf("%s", tokenStrArr[0]);
+        	printf("%s", tokenStrArr[1]);
+        	printf("%s", tokenStrArr[2]);
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
-                int s;
-                waitpid(-1, &s, 0); // Wait for process termination
+                wait(NULL); // Wait for process termination
+                //free(input);
+                //char *input = (char*)malloc(200);
             } else {
-                execvp(tokenStrArr[0], tokenStrArr);
+                execl(tokenStrArr[0], tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
+                printf("inside else");
+                exit(0);
             }
         } else {
-            char* temp;
-            temp = strcat("/usr/bin/",tokenStrArr[0]);
-            free(tokenStrArr[0]);
+            char temp[100] = "/bin/";
+            strcat(temp, tokenStrArr[0]);
             tokenStrArr[0] = temp;
+            //printf("%s\n", tokenStrArr[0]);
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
-                int s;
-                waitpid(-1, &s, 0); // Wait for process termination
+                //int s;
+                wait(NULL); // Wait for process termination
             } else {
-                    if(execvp(tokenStrArr[0], tokenStrArr) == -1){ 
-                    perror("Wrong command"); // Display error message
+                    //if(execvp(tokenStrArr[0], tokenStrArr) == -1){ 
+            	execl(temp, tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
+                    //printf("%s not found", tokenStrArr[0]); // Display error message
                     exit(0);
-                }               
             }
         }
+        free(buf);
+        free(tokenNum);
         free(tokenStrArr);
-        
         printf("GENIE > ");
-        scanf("%c", &input);
+        scanf("%s", input);
     }
     
     printf("Goodbye!\n");
     return 0;
-
-    /*while(strcmp(input,"quit")!= 0) {
-        tokenStrArr = readTokens(10, 20, tokenNum, input);
-        if (strchr(tokenStrArr[0],'/') != NULL) { 
-            if (stat(strcat("/bin/",tokenStrArr[0]), &buf) == 0) { //found in bin
-                if (fork() == 0) {
-                    execl(strcat("/bin/",tokenStrArr[0]), tokenStrArr[0], NULL);
-                }
-                wait(NULL);
-            } else {
-                printf(strcat(tokenStrArr[0], "not found"));
-            }
-
-        } else if(stat(tokenStrArr[0], &buf) == 0) { //command path found
-
-        } else {
-            printf(strcat(tokenStrArr[0], "not found"));
-
-        }
-        scanf("%s", input);
-    }*/
-
-
-
-
     
 }
 
@@ -117,7 +105,7 @@ char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* bu
     tokenStrArr = (char**) malloc(sizeof(char*) * maxTokenNum);
     
     //Nullify all entries
-    for (i = 0; i < maxTokenNum; i++) {
+    for (int i = 0; i < maxTokenNum; i++) {
         tokenStrArr[i] = NULL;
     }
 
