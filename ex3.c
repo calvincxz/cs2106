@@ -16,13 +16,36 @@
 #include <unistd.h>     //for fork(), wait()
 #include <string.h>     //for string comparison etc
 #include <stdlib.h>     //for malloc()
+#include <ctype.h>
+
 #define READ_END 0
 #define WRITE_END 1
 
 char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer, char* delim);
 void freeTokenArray(char** strArr, int size);
-void PipeTwo (char** command1, char** command2);
+void PipeTwo (char** command, int size);
+char *ltrim(char *s);
+char *rtrim(char *s);
+char *trim(char *s);
 
+char *ltrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *rtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return rtrim(ltrim(s)); 
+}
 
 int main() {
 
@@ -44,7 +67,7 @@ int main() {
         buf = malloc(sizeof(struct stat));
         tokenNum = malloc(sizeof(int));
         commandNum = malloc(sizeof(int));
-        command = readTokens(10, 200, commandNum, input, " | ");
+        command = readTokens(10, 200, commandNum, input, "\\|");
         //tokenStrArr = readTokens(10, 200, tokenNum, input, " \n");
         if (*commandNum == 1) {
             tokenStrArr = readTokens(10, 20, tokenNum, command[0], " \n");
@@ -80,6 +103,7 @@ int main() {
                     }
                     if(execvp(temp, tokenStrArr) == -1){ 
                         fprintf(stderr,"%s not found\n", temp);
+                        exit(0);
                     }
                     //execvp(temp, tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
                 }
@@ -88,12 +112,11 @@ int main() {
             free(tokenNum);
             free(tokenStrArr);
         } else {  //more than 1 command
-
-            char** tokenStrArr1 = readTokens(10, 20, tokenNum, command[0], " \n");
-            char** tokenStrArr2 = readTokens(10, 20, tokenNum, command[1], " \n");
-            PipeTwo(tokenStrArr1, tokenStrArr2);
+            //printf("commadnum%d", *commandNum); 
+            PipeTwo(command, *commandNum);
         }
 
+        free(commandNum);
         free(input);
         input = (char *)malloc(bufsize * sizeof(char));
         printf("GENIE > ");
@@ -105,44 +128,143 @@ int main() {
     
 }
 
-void PipeTwo(char** command1, char** command2) {
+void PipeTwo(char** command, int size) {
     pid_t pid;
-    int fd[2];
-    pipe(fd);
+    //int fd[2 * size];
+    //int count = 1;
+    //pipe(fd);
+    int* tokenNum1 = malloc(sizeof(int));
+    int fd[size][2];
+      //int pipe2[2];
+
+      // create pipe1
+    for (int i = 0; i < size; i++) {
+        
+
+        char** command1 = readTokens(10, 20, tokenNum1, command[i], " \n");
+
+        if ( i < size - 1) {
+            pipe(fd[i]);
+        }
+
+        if ((pid = fork()) == -1) {
+            perror("bad fork1");
+
+        } else if (pid == 0) {
+            if (i == 0) {
+                // stdin --> ps --> pipe1
+        // input from stdin (already done), output to pipe1
+            dup2(fd[i][1], 1); //1 is write stdout
+            // close fds
+            close(fd[i][0]);
+            close(fd[i][1]);
+
+            execvp(command1[0], command1);
+            // exec didn't work, exit
+            perror("bad exec ps");
+            _exit(1);
+            } else if (i != size - 1) {
+                dup2(fd[i][0], 0);
+                // output to pipe2
+                dup2(fd[i+1][1], 1);
+                // close fds
+                close(fd[i][0]);
+                close(fd[i][1]);
+                close(fd[i+1][0]);
+                close(fd[i+1][1]);
+                execvp(command1[0], command1);
+                // exec didn't work, exit
+                perror("bad exec grep root");
+                _exit(1);
+            } else {
+                printf("aaa");
+                dup2(fd[i-1][0], 0);
+                // output to stdout (already done). Close fds
+                close(fd[i-1][1]);
+                close(fd[i-1][0]);
+                
+                execvp(command1[0], command1);
+            }
+        
+        } else {  // parent
+            //if (i != 0) {
+                //close(fd[i-1][0]);
+                //close(fd[i-1][1]);
+            //}
+            int status;
+            close(fd[i-1][0]);
+            close(fd[i][0]);
+            close(fd[i-1][1]);
+            close(fd[i][1]);
+            waitpid(pid, &status, 0);
+                
+        }
+    }
+
+    free(tokenNum1);
+
+
+      // parent
+      // close unused fds
+    
+
+    /*for (count = 0; count < size - 1; count++) {
+
+    char** command1 = readTokens(10, 20, tokenNum1, command[count], " \n");
+    char** command2 = readTokens(10, 20, tokenNum2, command[count+1], " \n");
     pid = fork();
 
     if(pid==0) //child
     {
-        dup2(fd[WRITE_END], STDOUT_FILENO);
-        close(fd[READ_END]);
-        close(fd[WRITE_END]);
-        //execlp(command1[0], "ls", "-l", (char*) NULL);
-        execv(command1[0], command1);
-        //fprintf(stderr, "Failed to execute '%s'\n", "ls");
+        if (count == 0) {
+            dup2(fd[2*count+1], STDOUT_FILENO);
+            close(fd[2*count+1]);
+            close(fd[2*count]);
+            if (execvp(command1[0], command1) == -1)
+        fprintf(stderr, "Failed to execute '%s'\n", "ls");
         exit(1);
+        } else {
+            dup2(fd[2*count], STDIN_FILENO);
+            close(fd[2*count+1]);
+            close(fd[2*count]);
+        }
+        
+        
+        //printf
+        
     }
     else
     { 
         pid=fork();
-
         if(pid==0)
         {
-            dup2(fd[READ_END], STDIN_FILENO);
-            close(fd[WRITE_END]);
-            close(fd[READ_END]);
+            dup2(fd[2*count + 2], STDIN_FILENO);
             //execlp("wc", "wc", "-l",(char*) NULL);
-            execv(command2[0], command2);
-            //fprintf(stderr, "Failed to execute '%s'\n", scmd);
-            exit(1);
+            if (count == size-2) {
+                close(fd[2*count+1]);
+                close(fd[2*count]);
+                execvp(command2[0], command2);
+            } else {
+
+                close(fd[2*count]);
+                dup2(fd[2*count+1], STDOUT_FILENO);
+                close(fd[2*count+1]);
+                execvp(command2[0], command2);
+            }
+            
+            
         }
         else
         {
+            int i;
             int status;
-            close(fd[READ_END]);
-            close(fd[WRITE_END]);
+            for(i = 0; i < size; i++){
+                   close(fd[i]);
+                }
             waitpid(pid, &status, 0);
         }
     }
+    }*/
 }
 
 
@@ -175,7 +297,7 @@ char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* bu
         tokenStrArr[i] = (char*) malloc(sizeof(char*) * maxTokenSize);
 
         //Ensure at most 19 + null characters are copied
-        strncpy(tokenStrArr[i], token, maxTokenSize - 1);
+        strncpy(tokenStrArr[i], trim(token), maxTokenSize - 1);
 
         //Add NULL terminator in the worst case
         tokenStrArr[i][maxTokenSize-1] = '\0';
