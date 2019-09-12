@@ -27,25 +27,8 @@ int PipeTwo (char** command, int size);
 char *ltrim(char *s);
 char *rtrim(char *s);
 char *trim(char *s);
+int isValidPath(char *str1, char *str2);
 
-char *ltrim(char *s)
-{
-    while(isspace(*s)) s++;
-    return s;
-}
-
-char *rtrim(char *s)
-{
-    char* back = s + strlen(s);
-    while(isspace(*--back));
-    *(back+1) = '\0';
-    return s;
-}
-
-char *trim(char *s)
-{
-    return rtrim(ltrim(s)); 
-}
 
 int main() {
 
@@ -72,13 +55,13 @@ int main() {
     while(strcmp(input,"quit") != 0) {
 
         //printf("%s\n", input);
+
         buf = malloc(sizeof(struct stat));
         tokenNum = malloc(sizeof(int));
         commandNum = malloc(sizeof(int));
         command = readTokens(10, 200, commandNum, input, "\\|");
         if (*commandNum == 1) {
             tokenStrArr = readTokens(10, 20, tokenNum, command[0], " \n");
-        //printf("aaa");
         //printf("%s\n", tokenStrArr[0]);
             int i = stat(tokenStrArr[0], buf);
             if (i == 0) {
@@ -88,6 +71,7 @@ int main() {
                 } else {
                     if(execv(tokenStrArr[0], tokenStrArr) == -1){ 
                         fprintf(stderr,"%s not found\n", tokenStrArr[0]);
+                        exit(0);
                     }
                 }
             } else {
@@ -116,7 +100,6 @@ int main() {
                 fprintf(stderr,"%s not found\n", inputCopy);
             }
         }
-
         free(commandNum);
         free(input);
         free(inputCopy);
@@ -146,12 +129,20 @@ int PipeTwo(char** command, int size) {
     for (int i = 0; i < maxPipeNum; i++) {
         pipe(fd + 2*i);
     }
-    int anyError = 0;
       // create pipe1
     for (int i = 0; i < size; i++) {
-
         char** command1 = readTokens(10, 20, tokenNum1, command[i], " \n");
-        //pipe(fd + 2*i);
+        if (isValidPath("/bin/", command1[0]) != 0 
+            && isValidPath("/usr/bin/", command1[0]) != 0 ) {
+            for  (int i = 0; i < 2* size; i++) {
+                close(fd[i]);
+            }
+            for  (int j = 0;  j < i; j++) {
+                wait(NULL);
+            }
+
+            return 1;
+        }
 
         if ((pid = fork()) == -1) {
             perror("bad fork1");
@@ -169,34 +160,21 @@ int PipeTwo(char** command, int size) {
             }
 
             if (execvp(command1[0], command1) == -1) {
-                //anyError = 1;
-                break;
-                //exit(1);
-                //return 1;
+                exit(1);
             }
+            
         }
-
-    }
-    if (pid == 0) {
-        //anyError = 1;
-        exit(1);
-        
-    }
+    } // end of for loop
 
     //parent reaches here
     for  (int i = 0; i < 2* size; i++) {
         close(fd[i]);
     }
 
-    if (anyError == 1) {
-        return 1;
-    }
-
     for  (int i = 0;  i < size; i++) {
         wait(NULL);
-        /*printf("%d", *status);
-        if (*status != 0) {
-            return 1;
+        /*if (*status != 0) {
+            anyError = 1;
         }*/
     }
 
@@ -263,4 +241,36 @@ void freeTokenArray(char** tokenStrArr, int size) {
 
     //Note: Caller still need to set the strArr parameter to NULL
     //      afterwards
+}
+
+
+
+char *ltrim(char *s)
+{
+    while(isspace(*s)) s++;
+    return s;
+}
+
+char *rtrim(char *s)
+{
+    char* back = s + strlen(s);
+    while(isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+char *trim(char *s)
+{
+    return rtrim(ltrim(s)); 
+}
+
+int isValidPath(char *str1, char *str2) {
+    struct stat *buf;
+    buf = malloc(sizeof(struct stat));
+    char temp[100];
+    strcpy(temp, str1);
+    strcat(temp, str2);
+    //printf("%s\n", temp);
+    int i = stat(temp, buf);
+    return i;
 }
