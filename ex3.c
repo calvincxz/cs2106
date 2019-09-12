@@ -130,85 +130,47 @@ int main() {
 
 void PipeTwo(char** command, int size) {
     pid_t pid;
-    //int fd[2 * size];
-    //int count = 1;
-    //pipe(fd);
     int* tokenNum1 = malloc(sizeof(int));
-    int fd[size][2];
-      //int pipe2[2];
-    int i;
-    int j;
+    int maxPipeNum = (size-1);
+    int fd[2 * maxPipeNum];
+
+    for (int i = 0; i < maxPipeNum; i++) {
+        pipe(fd + 2*i);
+    }
 
       // create pipe1
     for (int i = 0; i < size; i++) {
         
-
         char** command1 = readTokens(10, 20, tokenNum1, command[i], " \n");
-
-        if ( i < size - 1) {
-            pipe(fd[i]);
-        }
+        //pipe(fd + 2*i);
 
         if ((pid = fork()) == -1) {
             perror("bad fork1");
 
-        } else if (pid == 0) {
-            if (i == 0) {
-                // stdin --> ps --> pipe1
-        // input from stdin (already done), output to pipe1
-            dup2(fd[i][1], 1); //1 is write stdout
-            // close fds
-            /*close(fd[i][0]);
-            close(fd[i][1]);*/
+        } else if (pid == 0) { // main frame for child
+            if (i != 0) { //if not firstcommand
+                dup2(fd[2*i - 2], 0);
+            }
 
+            if (i != size-1) { // if not last command
+                dup2(fd[2*i + 1], 1);
+            }
+            for  (int i = 0; i < 2* size; i++) {
+                close(fd[i]);
+            }
             execvp(command1[0], command1);
-            // exec didn't work, exit
-            perror("bad exec ps");
-            _exit(1);
-            } else if (i != size - 1) {
-                dup2(fd[i][0], 0);
-                // output to pipe2
-                dup2(fd[i+1][1], 1);
-                // close fds
-                /*close(fd[i][0]);
-                close(fd[i][1]);
-                close(fd[i+1][0]);
-                close(fd[i+1][1]);*/
-                execvp(command1[0], command1);
-                // exec didn't work, exit
-                perror("bad exec grep root");
-                _exit(1);
-            } else {
-                printf("aaa");
-                dup2(fd[i-1][0], 0);
-                // output to stdout (already done). Close fds
-                //close(fd[i-1][1]);
-                //close(fd[i-1][0]);
-                
-                execvp(command1[0], command1);
-            }
-            for  (int j = 0; i < size; i++) {
-                close(fd[i][0]);
-                close(fd[i][1]);
-            }
-        
-        } else {  // parent
-            for  (int j = 0; i < size; i++) {
-                close(fd[i][0]);
-                close(fd[i][1]);
-            }
 
-            for  (int j = 0; i < size; i++) {
-                wait(NULL);
-            }
-            /*int status;
-            close(fd[i-1][0]);
-            close(fd[i][0]);
-            close(fd[i-1][1]);
-            close(fd[i][1]);*/
-            //waitpid(pid, &status, 0);
-                
-        }
+
+        } 
+    }
+    //parent reaches here
+    for  (int i = 0; i < 2* size; i++) {
+        close(fd[i]);
+    }
+
+    for  (int i = 0;  i < size; i++) {
+        //printf("aaa");
+        wait(NULL);
     }
 
     free(tokenNum1);
