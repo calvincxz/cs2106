@@ -136,6 +136,8 @@ void PipeTwo(char** command, int size) {
     int* tokenNum1 = malloc(sizeof(int));
     int fd[size][2];
       //int pipe2[2];
+    int i;
+    int j;
 
       // create pipe1
     for (int i = 0; i < size; i++) {
@@ -156,8 +158,8 @@ void PipeTwo(char** command, int size) {
         // input from stdin (already done), output to pipe1
             dup2(fd[i][1], 1); //1 is write stdout
             // close fds
-            close(fd[i][0]);
-            close(fd[i][1]);
+            /*close(fd[i][0]);
+            close(fd[i][1]);*/
 
             execvp(command1[0], command1);
             // exec didn't work, exit
@@ -168,10 +170,10 @@ void PipeTwo(char** command, int size) {
                 // output to pipe2
                 dup2(fd[i+1][1], 1);
                 // close fds
-                close(fd[i][0]);
+                /*close(fd[i][0]);
                 close(fd[i][1]);
                 close(fd[i+1][0]);
-                close(fd[i+1][1]);
+                close(fd[i+1][1]);*/
                 execvp(command1[0], command1);
                 // exec didn't work, exit
                 perror("bad exec grep root");
@@ -180,23 +182,31 @@ void PipeTwo(char** command, int size) {
                 printf("aaa");
                 dup2(fd[i-1][0], 0);
                 // output to stdout (already done). Close fds
-                close(fd[i-1][1]);
-                close(fd[i-1][0]);
+                //close(fd[i-1][1]);
+                //close(fd[i-1][0]);
                 
                 execvp(command1[0], command1);
             }
+            for  (int j = 0; i < size; i++) {
+                close(fd[i][0]);
+                close(fd[i][1]);
+            }
         
         } else {  // parent
-            //if (i != 0) {
-                //close(fd[i-1][0]);
-                //close(fd[i-1][1]);
-            //}
-            int status;
+            for  (int j = 0; i < size; i++) {
+                close(fd[i][0]);
+                close(fd[i][1]);
+            }
+
+            for  (int j = 0; i < size; i++) {
+                wait(NULL);
+            }
+            /*int status;
             close(fd[i-1][0]);
             close(fd[i][0]);
             close(fd[i-1][1]);
-            close(fd[i][1]);
-            waitpid(pid, &status, 0);
+            close(fd[i][1]);*/
+            //waitpid(pid, &status, 0);
                 
         }
     }
