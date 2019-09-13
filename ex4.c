@@ -1,5 +1,5 @@
 /*************************************
- * Lab 2 Exercise 3
+ * Lab 2 Exercise 4
  * Name: Calvin
  * Student No: A0190624H
  * Lab Group: 4
@@ -28,7 +28,8 @@ char *ltrim(char *s);
 char *rtrim(char *s);
 char *trim(char *s);
 int isValidPath(char *str1, char *str2);
-
+char* replace_char(char* str, char find, char replace);
+char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer, char *delim); // tokenizes + checks for environment var
 
 int main() {
 
@@ -51,61 +52,96 @@ int main() {
     if( inputCopy[len-1] == '\n' ) {
         inputCopy[len-1] = 0;
     }
-    buf = malloc(sizeof(struct stat));
-    tokenNum = malloc(sizeof(int));
-    commandNum = malloc(sizeof(int));
+    
 
     while(strcmp(input,"quit\n") != 0) {
-        command = readTokens(10, 200, commandNum, input, "\n");
-        if (strcmp(command[0],"set") == 0) {
+            buf = malloc(sizeof(struct stat));
+            tokenNum = malloc(sizeof(int));
+            commandNum = malloc(sizeof(int));
+            command = readTokens(10, 200, commandNum, input, "\\|");
             
-            char* temp = command[1];
-            setenv(temp, command[2], 0);
-            if (getenv(temp) == NULL) {
-                printf("error\n");
-            }
-        } else {
-            //command = readTokens(10, 200, commandNum, input, "\\|");
             if (*commandNum == 1) {
-                tokenStrArr = readTokens(10, 20, tokenNum, command[0], " \n");
-        //printf("%s\n", tokenStrArr[0]);
-                int i = stat(tokenStrArr[0], buf);
-                if (i == 0) {
-                int pid = fork(); // Create a new process
-                if (pid != 0) { // parent
-                    wait(NULL);
-                } else {
-                    if(execv(tokenStrArr[0], tokenStrArr) == -1){ 
-                        fprintf(stderr,"%s not found\n", tokenStrArr[0]);
-                        exit(0);
+                char* commandCopy = (char *)malloc(bufsize * sizeof(char));;
+                strcpy(commandCopy, command[0]);
+                tokenStrArr = readTokens2(10, 20, tokenNum, command[0], " \n"); //remove $
+                //printf("%s\n", tokenStrArr[0]);
+
+                if (strcmp(tokenStrArr[0],"set") == 0) { 
+                    char* temp = tokenStrArr[1];
+                    setenv(temp, tokenStrArr[2], 0);
+                    //printf("set success!");
+                    if (getenv(temp) == NULL) {
+                        printf("error\n");
+                    }
+                    //exit(0);
+                } else if (strcmp(tokenStrArr[0],"unset") == 0) {
+                    char **tempArr = malloc(200);
+                    int *num = malloc(sizeof(int));
+                    tempArr = readTokens(10, 20, num, commandCopy, " \n");
+                    char* temp = tempArr[1]; //file
+                    temp++;
+                    free(num);
+                    if (unsetenv(temp) != 0) {
+                        printf("failed to unset\n");
                     }
                 }
-            } else {
-                char temp[] = "/bin/";
-                strcat(temp, tokenStrArr[0]);
+                //int i = ;
+                else if (stat(tokenStrArr[0], buf) == 0) {
                 int pid = fork(); // Create a new process
-                if (pid != 0) { // parent
-                    wait(NULL); // Wait for child
-                } else {
-                    if (stat(temp,buf) != 0) {
-                        fprintf(stderr,"%s not found\n", temp);
-                        exit(0);
+                    if (pid != 0) { // parent
+                        wait(NULL);
+                    } else {
+                        for (int i = 0; i < *tokenNum; i++) {
+                            if (strcmp(tokenStrArr[i],"getenvnull") == 0) {
+                                //exit(0);
+                                char* nullptr = NULL;
+                                execl(tokenStrArr[i], tokenStrArr[i], nullptr, NULL);
+                                exit(0);
+                            }
+                        }
+                        if(execv(tokenStrArr[0], tokenStrArr) == -1){ 
+                            fprintf(stderr,"%s not found\n", tokenStrArr[0]);
+                            exit(0);
+                        }
                     }
-                    if(execvp(temp, tokenStrArr) == -1){ 
-                        fprintf(stderr,"%s not found\n", temp);
-                        exit(0);
+                } else {
+                    char temp[] = "/bin/";
+                    strcat(temp, tokenStrArr[0]);
+                    int pid = fork(); // Create a new process
+                    if (pid != 0) { // parent
+                        wait(NULL); // Wait for child
+                    } else {
+                        if (stat(temp,buf) != 0) {
+                            fprintf(stderr,"%s not found\n", temp);
+                            exit(0);
+                        }
+                        int t = 0;
+                        for (int i = 0; i < *tokenNum; i++) {
+                            if (strcmp(tokenStrArr[i],"getenvnull") == 0) {
+                                //exit(0);
+                                //main();
+                                char* nullptr = NULL;
+                                execl(temp, temp, nullptr, NULL);
+                                exit(0);
+                            }
+                        }
+                        
+                        if(execvp(temp, tokenStrArr) == -1){ 
+                            fprintf(stderr,"%s not found\n", temp);
+                            exit(0);
+                        }
                     }
                 }
+                free(commandCopy);
+                free(buf);
+                free(tokenNum);
+                free(tokenStrArr);
+            } else {  //more than 1 command
+                if (PipeTwo(command, *commandNum) == 1) {
+                    fprintf(stderr,"%s not found\n", inputCopy);
+                }
             }
-            free(buf);
-            free(tokenNum);
-            free(tokenStrArr);
-        } else {  //more than 1 command
-            //printf("commadnum%d", *commandNum); 
-            if (PipeTwo(command, *commandNum) == 1) {
-                fprintf(stderr,"%s not found\n", inputCopy);
-            }
-        }
+            
         free(commandNum);
         free(input);
         free(inputCopy);
@@ -113,11 +149,10 @@ int main() {
         inputCopy = (char *)malloc(bufsize * sizeof(char));
         printf("GENIE > ");
         getline(&input,&bufsize,stdin);
-            strcpy(inputCopy, input); //inputcopy for error output msg
-            len = strlen(inputCopy);
-            if( inputCopy[len-1] == '\n' ) {
-                inputCopy[len-1] = 0;
-            }
+        strcpy(inputCopy, input); //inputcopy for error output msg
+        len = strlen(inputCopy);
+        if( inputCopy[len-1] == '\n' ) {
+            inputCopy[len-1] = 0;
         }
     }
     
@@ -138,7 +173,7 @@ int PipeTwo(char** command, int size) {
     }
       // create pipe1
     for (int i = 0; i < size; i++) {
-        char** command1 = readTokens(10, 20, tokenNum1, command[i], " \n");
+        char** command1 = readTokens2(10, 20, tokenNum1, command[i], " \n");
         if (isValidPath("/bin/", command1[0]) != 0 
             && isValidPath("/usr/bin/", command1[0]) != 0 ) {
             for  (int i = 0; i < 2* size; i++) {
@@ -171,6 +206,7 @@ int PipeTwo(char** command, int size) {
             }
             
         }
+        //free(command1);
     } // end of for loop
 
     //parent reaches here
@@ -280,4 +316,73 @@ int isValidPath(char *str1, char *str2) {
     //printf("%s\n", temp);
     int i = stat(temp, buf);
     return i;
+}
+
+char* replace_char(char* str, char find, char replace){
+    char *current_pos = strchr(str,find);
+    while (current_pos){
+        *current_pos = replace;
+        current_pos = strchr(current_pos,find);
+    }
+    return str;
+}
+
+char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer, char *delim)
+//Tokenize buffer
+//Assumptions:
+//  - the tokens are separated by " " and ended by newline
+//Return: Tokenized substrings as array of strings
+//        readTokenNum stores the total number of tokens
+//Note:
+//  - should use the freeTokenArray to free memory after use!
+{
+    char** tokenStrArr;
+    char* token;
+    int i;
+
+    //allocate token array, each element is a char*
+    tokenStrArr = (char**) malloc(sizeof(char*) * maxTokenNum);
+    
+    //Nullify all entries
+    for (int i = 0; i < maxTokenNum; i++) {
+        tokenStrArr[i] = NULL;
+    }
+
+    token = strtok(buffer, delim);
+    
+    i = 0;
+    while (i < maxTokenNum && (token != NULL)) {
+         //Allocate space for token string
+        tokenStrArr[i] = (char*) malloc(sizeof(char*) * maxTokenSize);
+
+        //Ensure at most 19 + null characters are copied
+        char word[100];
+        strcpy(word, trim(token));
+        if (word[0] == '$') {
+            char* temp = word;
+            temp++;
+            //printf("%s\n", temp);
+            //printf("%s\n", getenv(temp));
+            if (getenv(temp) == NULL) {
+                strncpy(tokenStrArr[i], "getenvnull", maxTokenSize - 1);
+            } else {
+                //printf("%s\n", get);
+                strncpy(tokenStrArr[i], getenv(temp), maxTokenSize - 1);
+
+            }
+        } else {
+            strncpy(tokenStrArr[i], trim(token), maxTokenSize - 1);
+        }
+        
+
+        //Add NULL terminator in the worst case
+        tokenStrArr[i][maxTokenSize-1] = '\0';
+        
+        i++;
+        token = strtok(NULL, delim);
+    }
+    
+    *readTokenNum = i;
+    
+    return tokenStrArr;
 }

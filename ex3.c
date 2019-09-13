@@ -52,9 +52,7 @@ int main() {
         inputCopy[len-1] = 0;
     }
 
-    while(strcmp(input,"quit") != 0) {
-
-        //printf("%s\n", input);
+    while(strcmp(input,"quit\n") != 0) {
 
         buf = malloc(sizeof(struct stat));
         tokenNum = malloc(sizeof(int));
@@ -62,9 +60,7 @@ int main() {
         command = readTokens(10, 200, commandNum, input, "\\|");
         if (*commandNum == 1) {
             tokenStrArr = readTokens(10, 20, tokenNum, command[0], " \n");
-        //printf("%s\n", tokenStrArr[0]);
-            int i = stat(tokenStrArr[0], buf);
-            if (i == 0) {
+            if (isValidPath("",tokenStrArr[0]) == 0) {
                 int pid = fork(); // Create a new process
                 if (pid != 0) { // parent
                     wait(NULL);
@@ -81,7 +77,7 @@ int main() {
                 if (pid != 0) { // parent
                     wait(NULL); // Wait for child
                 } else {
-                    if (stat(temp,buf) != 0) {
+                    if (isValidPath("", temp) != 0) {
                         fprintf(stderr,"%s not found\n", temp);
                         exit(0);
                     }
@@ -129,7 +125,7 @@ int PipeTwo(char** command, int size) {
     for (int i = 0; i < maxPipeNum; i++) {
         pipe(fd + 2*i);
     }
-      // create pipe1
+
     for (int i = 0; i < size; i++) {
         char** command1 = readTokens(10, 20, tokenNum1, command[i], " \n");
         if (isValidPath("/bin/", command1[0]) != 0 
@@ -173,9 +169,6 @@ int PipeTwo(char** command, int size) {
 
     for  (int i = 0;  i < size; i++) {
         wait(NULL);
-        /*if (*status != 0) {
-            anyError = 1;
-        }*/
     }
 
     free(tokenNum1);

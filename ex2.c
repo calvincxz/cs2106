@@ -51,9 +51,9 @@ int main() {
         } else {
             char temp[] = "/bin/";
             strcat(temp, tokenStrArr[0]);
-            int pid = fork(); // Create a new process
+            int pid = fork(); 
             if (pid != 0) { // parent
-                wait(NULL); // Wait for process termination
+                wait(NULL); // wait for child
             } else {
                 if (isValidPath("", temp) != 0) {
                     fprintf(stderr,"%s not found\n", temp);
@@ -70,7 +70,7 @@ int main() {
         input = (char *)malloc(bufsize * sizeof(char));
         getline(&input,&bufsize,stdin);
     }
-    
+
     printf("Goodbye!\n");
     return 0;
     
