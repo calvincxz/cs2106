@@ -19,6 +19,7 @@
 
 char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer);
 void freeTokenArray(char** strArr, int size);
+int isValidPath(char *str1, char *str2);
 
 
 int main() {
@@ -34,51 +35,31 @@ int main() {
     input = (char *)malloc(bufsize * sizeof(char));
     getline(&input,&bufsize,stdin);
 
-    while(strcmp(input,"quit") != 0) {
-
-    	//printf("%s\n", input);
+    while(strcmp(input,"quit\n") != 0) {
         buf = malloc(sizeof(struct stat));
         tokenNum = malloc(sizeof(int));
         tokenStrArr = readTokens(10, 20, tokenNum, input);
-        //printf("aaa");
-        //printf("%s\n", tokenStrArr[0]);
-        //freeTokenArray(arr, *tokenNum);
-        //printf("stat: %d", stat(tokenStrArr[0], buf));
-        int i = stat(tokenStrArr[0], buf);
-        if ( i == 0) {
-            printf("inside if statement\n");
-            //printf("%s\n", tokenStrArr[0]);
+        if (isValidPath("", tokenStrArr[0]) == 0) {
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
-                //int *status;
-                //waitpid(pid, status, WNOHANG); // Wait for process termination
                 wait(NULL);
-                //char *input = (char*)malloc(200);
             } else {
-            	if(execv(tokenStrArr[0], tokenStrArr) == -1){ 
-                    printf("%s not found\n", tokenStrArr[0]);
+                if(execv(tokenStrArr[0], tokenStrArr) == -1){ 
+                    fprintf(stderr,"%s not found\n", tokenStrArr[0]);
                 }
-                //execv(tokenStrArr[0], tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
             }
         } else {
             char temp[] = "/bin/";
             strcat(temp, tokenStrArr[0]);
-            //tokenStrArr[0] = temp;
-            //printf("%s\n", tokenStrArr[0]);
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
-                //int s;
                 wait(NULL); // Wait for process termination
             } else {
-            	//execvp(temp,tokenStrArr);
-            	if (stat(temp,buf) != 0) {
-            		printf("%s not found\n", tokenStrArr[0]);
-            		exit(0);
-            	}
-                if(execvp(temp, tokenStrArr) == -1){ 
-                	printf("%s not found\n", temp);
+                if (isValidPath("", temp) != 0) {
+                    fprintf(stderr,"%s not found\n", temp);
+                    exit(0);
                 }
-                //execvp(temp, tokenStrArr[0], tokenStrArr[1], tokenStrArr[2], tokenStrArr[3], tokenStrArr[4], NULL);
+                execvp(temp, tokenStrArr); 
             }
         }
         free(buf);
@@ -87,7 +68,7 @@ int main() {
         free(input);
         printf("GENIE > ");
         input = (char *)malloc(bufsize * sizeof(char));
-    	getline(&input,&bufsize,stdin);
+        getline(&input,&bufsize,stdin);
     }
     
     printf("Goodbye!\n");
@@ -154,4 +135,15 @@ void freeTokenArray(char** tokenStrArr, int size) {
 
     //Note: Caller still need to set the strArr parameter to NULL
     //      afterwards
+}
+
+int isValidPath(char *str1, char *str2) {
+    struct stat *buf;
+    buf = malloc(sizeof(struct stat));
+    char temp[100];
+    strcpy(temp, str1);
+    strcat(temp, str2);
+    //printf("%s\n", temp);
+    int i = stat(temp, buf);
+    return i;
 }
