@@ -53,7 +53,6 @@ int main() {
         inputCopy[len-1] = 0;
     }
     
-
     while(strcmp(input,"quit\n") != 0) {
             buf = malloc(sizeof(struct stat));
             tokenNum = malloc(sizeof(int));
@@ -64,7 +63,6 @@ int main() {
                 char* commandCopy = (char *)malloc(bufsize * sizeof(char));;
                 strcpy(commandCopy, command[0]);
                 tokenStrArr = readTokens2(10, 20, tokenNum, command[0], " \n"); //remove $
-                //printf("%s\n", tokenStrArr[0]);
 
                 if (strcmp(tokenStrArr[0],"set") == 0) { 
                     char* temp = tokenStrArr[1];
@@ -85,7 +83,6 @@ int main() {
                         printf("failed to unset\n");
                     }
                 }
-                //int i = ;
                 else if (stat(tokenStrArr[0], buf) == 0) {
                 int pid = fork(); // Create a new process
                     if (pid != 0) { // parent
@@ -93,7 +90,6 @@ int main() {
                     } else {
                         for (int i = 0; i < *tokenNum; i++) {
                             if (strcmp(tokenStrArr[i],"getenvnull") == 0) {
-                                //exit(0);
                                 char* nullptr = NULL;
                                 execl(tokenStrArr[i], tokenStrArr[i], nullptr, NULL);
                                 exit(0);
@@ -111,21 +107,11 @@ int main() {
                     if (pid != 0) { // parent
                         wait(NULL); // Wait for child
                     } else {
-                        if (stat(temp,buf) != 0) {
+                        if (isValidPath("", temp) != 0) {
                             fprintf(stderr,"%s not found\n", temp);
                             exit(0);
                         }
-                        int t = 0;
-                        for (int i = 0; i < *tokenNum; i++) {
-                            if (strcmp(tokenStrArr[i],"getenvnull") == 0) {
-                                //exit(0);
-                                //main();
-                                char* nullptr = NULL;
-                                execl(temp, temp, nullptr, NULL);
-                                exit(0);
-                            }
-                        }
-                        
+
                         if(execvp(temp, tokenStrArr) == -1){ 
                             fprintf(stderr,"%s not found\n", temp);
                             exit(0);
@@ -361,12 +347,10 @@ char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* b
         if (word[0] == '$') {
             char* temp = word;
             temp++;
-            //printf("%s\n", temp);
-            //printf("%s\n", getenv(temp));
             if (getenv(temp) == NULL) {
-                strncpy(tokenStrArr[i], "getenvnull", maxTokenSize - 1);
+                tokenStrArr[i] = NULL;
+                break;
             } else {
-                //printf("%s\n", get);
                 strncpy(tokenStrArr[i], getenv(temp), maxTokenSize - 1);
 
             }

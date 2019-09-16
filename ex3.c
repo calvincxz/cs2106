@@ -1,5 +1,5 @@
 /*************************************
- * Lab 2 Exercise 2
+ * Lab 2 Exercise 3
  * Name: Calvin
  * Student No: A0190624H
  * Lab Group: 4
@@ -91,7 +91,6 @@ int main() {
             free(tokenNum);
             free(tokenStrArr);
         } else {  //more than 1 command
-            //printf("commadnum%d", *commandNum); 
             if (PipeTwo(command, *commandNum) == 1) {
                 fprintf(stderr,"%s not found\n", inputCopy);
             }
