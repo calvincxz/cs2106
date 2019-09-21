@@ -20,6 +20,8 @@
 char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer);
 void freeTokenArray(char** strArr, int size);
 int isValidPath(char *str1, char *str2);
+int hasDoubleQuote(char *str);
+char* removeQuote(char *c);
 
 
 int main() {
@@ -27,7 +29,6 @@ int main() {
     char* input;
     size_t bufsize = 200;
     int* tokenNum;
-    struct stat *buf; 
     char **tokenStrArr;
     input = malloc(200);
     //read user input
@@ -36,10 +37,9 @@ int main() {
     getline(&input,&bufsize,stdin);
 
     while(strcmp(input,"quit\n") != 0) {
-        buf = malloc(sizeof(struct stat));
         tokenNum = malloc(sizeof(int));
         tokenStrArr = readTokens(10, 20, tokenNum, input);
-        if (isValidPath("", tokenStrArr[0]) == 0) {
+        if (isValidPath("", tokenStrArr[0]) == 0) {  //command has valid path
             int pid = fork(); // Create a new process
             if (pid != 0) { // parent
                 wait(NULL);
@@ -48,21 +48,21 @@ int main() {
                     fprintf(stderr,"%s not found\n", tokenStrArr[0]);
                 }
             }
-        } else {
-            char temp[] = "/bin/";
-            strcat(temp, tokenStrArr[0]);
+        } else {  //command path is invalid
+            char temp[200];
+            strcpy(temp,"/bin/");
+            strcat(temp, tokenStrArr[0]); //append command to /bin/
             int pid = fork(); 
             if (pid != 0) { // parent
                 wait(NULL); // wait for child
-            } else {
-                if (isValidPath("", temp) != 0) {
+            } else { // child
+                if (isValidPath("", temp) != 0) { // /bin/command is still invalid
                     fprintf(stderr,"%s not found\n", temp);
                     exit(0);
                 }
                 execvp(temp, tokenStrArr); 
             }
         }
-        free(buf);
         free(tokenNum);
         free(tokenStrArr);
         free(input);
@@ -70,6 +70,8 @@ int main() {
         input = (char *)malloc(bufsize * sizeof(char));
         getline(&input,&bufsize,stdin);
     }
+
+    free(input);
 
     printf("Goodbye!\n");
     return 0;
@@ -106,7 +108,12 @@ char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* bu
         tokenStrArr[i] = (char*) malloc(sizeof(char*) * maxTokenSize);
 
         //Ensure at most 19 + null characters are copied
-        strncpy(tokenStrArr[i], token, maxTokenSize - 1);
+        //token = trim(token);
+        if (hasDoubleQuote(token)) {
+            strncpy(tokenStrArr[i], removeQuote(token), maxTokenSize - 1);
+        } else {
+           strncpy(tokenStrArr[i], token, maxTokenSize - 1); 
+        }
 
         //Add NULL terminator in the worst case
         tokenStrArr[i][maxTokenSize-1] = '\0';
@@ -145,5 +152,33 @@ int isValidPath(char *str1, char *str2) {
     strcat(temp, str2);
     //printf("%s\n", temp);
     int i = stat(temp, buf);
+    free(buf);
     return i;
+}
+
+int hasDoubleQuote(char *str) {
+    char c[100];
+    strcpy(c, str);
+    int len = strlen(c);
+    if (c[0] == '\"' && c[len-1] == '\"') {
+        
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+char* removeQuote(char *c) {
+    int i;
+    char* str2 = malloc(200);
+    char str[100];
+    strcpy(str, c);
+    int len = strlen(c);
+    for(i=1;i<len-1;i++)
+        {
+            str[i-1]=str[i];
+        }
+    str[i-1]='\0';
+    str2 = str;
+    return str2;
 }

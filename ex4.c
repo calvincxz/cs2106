@@ -30,6 +30,8 @@ char *trim(char *s);
 int isValidPath(char *str1, char *str2);
 char* replace_char(char* str, char find, char replace);
 char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* buffer, char *delim); // tokenizes + checks for environment var
+int hasDoubleQuote(char *str);
+char* removeQuote(char *c);
 
 int main() {
 
@@ -54,7 +56,6 @@ int main() {
     }
     
     while(strcmp(input,"quit\n") != 0) {
-            buf = malloc(sizeof(struct stat));
             tokenNum = malloc(sizeof(int));
             commandNum = malloc(sizeof(int));
             command = readTokens(10, 200, commandNum, input, "\\|");
@@ -82,9 +83,8 @@ int main() {
                     if (unsetenv(temp) != 0) {
                         printf("failed to unset\n");
                     }
-                }
-                else if (stat(tokenStrArr[0], buf) == 0) {
-                int pid = fork(); // Create a new process
+                } else if (stat(tokenStrArr[0], buf) == 0) {
+                    int pid = fork(); // Create a new process
                     if (pid != 0) { // parent
                         wait(NULL);
                     } else {
@@ -101,7 +101,8 @@ int main() {
                         }
                     }
                 } else {
-                    char temp[] = "/bin/";
+                    char temp[200];
+                    strcpy(temp,"/bin/");
                     strcat(temp, tokenStrArr[0]);
                     int pid = fork(); // Create a new process
                     if (pid != 0) { // parent
@@ -141,7 +142,8 @@ int main() {
             inputCopy[len-1] = 0;
         }
     }
-    
+    free(input);
+    free(inputCopy);
     printf("Goodbye!\n");
     return 0;
     
@@ -241,7 +243,12 @@ char** readTokens(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* bu
         tokenStrArr[i] = (char*) malloc(sizeof(char*) * maxTokenSize);
 
         //Ensure at most 19 + null characters are copied
-        strncpy(tokenStrArr[i], trim(token), maxTokenSize - 1);
+        token = trim(token);
+        if (hasDoubleQuote(token)) {
+            strncpy(tokenStrArr[i], removeQuote(token), maxTokenSize - 1);
+        } else {
+           strncpy(tokenStrArr[i], token, maxTokenSize - 1); 
+        }
 
         //Add NULL terminator in the worst case
         tokenStrArr[i][maxTokenSize-1] = '\0';
@@ -301,6 +308,7 @@ int isValidPath(char *str1, char *str2) {
     strcat(temp, str2);
     //printf("%s\n", temp);
     int i = stat(temp, buf);
+    free(buf);
     return i;
 }
 
@@ -355,7 +363,12 @@ char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* b
 
             }
         } else {
-            strncpy(tokenStrArr[i], trim(token), maxTokenSize - 1);
+            token = trim(token);
+            if (hasDoubleQuote(token)) {
+                strncpy(tokenStrArr[i], removeQuote(token), maxTokenSize - 1);
+            } else {
+               strncpy(tokenStrArr[i], token, maxTokenSize - 1); 
+            }
         }
         
 
@@ -369,4 +382,31 @@ char** readTokens2(int maxTokenNum, int maxTokenSize, int* readTokenNum, char* b
     *readTokenNum = i;
     
     return tokenStrArr;
+}
+
+int hasDoubleQuote(char *str) {
+    char c[100];
+    strcpy(c, str);
+    int len = strlen(c);
+    if (c[0] == '\"' && c[len-1] == '\"') {
+        
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+char* removeQuote(char *c) {
+    int i;
+    char* str2 = malloc(200);
+    char str[100];
+    strcpy(str, c);
+    int len = strlen(c);
+    for(i=1;i<len-1;i++)
+        {
+            str[i-1]=str[i];
+        }
+    str[i-1]='\0';
+    str2 = str;
+    return str2;
 }
