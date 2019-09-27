@@ -20,7 +20,7 @@ void initialise(rw_lock* lock)
 void writer_acquire(rw_lock* lock)
 {
   pthread_mutex_lock(&(lock->turnstile));
-  pthread_mutex_lock(&(lock->roomEmpty));
+  pthread_mutex_lock(&(lock->roomEmpty)); // only writer can proceed after last reader signals
   lock->writer_count++;
 }
 
@@ -33,7 +33,7 @@ void writer_release(rw_lock* lock)
 
 void reader_acquire(rw_lock* lock)
 {
-  pthread_mutex_lock(&(lock->turnstile));
+  pthread_mutex_lock(&(lock->turnstile)); // stuck here if writer enters
   pthread_mutex_unlock(&(lock->turnstile));
   pthread_mutex_lock(&(lock->mutex));
   lock->reader_count++;
