@@ -17,9 +17,6 @@ extern int num_of_segments;
 sem_t maxCarInSegments; 
 pthread_mutex_t mutexes[100];
 int queue[100];
-int queue2[100];
-pthread_mutex_t noReader[100];
-pthread_mutex_t noWriter[100];
 
 void initialise(int num_of_cars, int num_of_segments)
 {
@@ -28,10 +25,9 @@ void initialise(int num_of_cars, int num_of_segments)
     //forks = [ Semaphore (1) for i in range (5)]
     for (int i = 0; i < num_of_segments; i++) {
         pthread_mutex_init(&mutexes[i], NULL);
-        pthread_mutex_init(&noReader[i], NULL);
-        pthread_mutex_init(&noWriter[i], NULL);
         queue[i] = 0;
     }
+
     // Now you can use them safely.
 
     sem_init(&maxCarInSegments, 0, num_of_segments - 1); 
@@ -56,29 +52,15 @@ void* car(void* car2)
 
     sem_wait(&maxCarInSegments);
     pthread_mutex_lock(&mutexes[car->entry_seg]);
-
-    pthread_mutex_lock(&noReader[car->entry_seg]);
-    	pthread_mutex_lock(&noWriter[car->current_seg]);
-    pthread_mutex_unlock(&noReader[car->current_seg]);
-
+    while(queue[car->entry_seg] > 0) {}
     enter_roundabout(car);
-    pthread_mutex_unlock(&noWriter[car->current_seg]);
-
+    //pthread_mutex_unlock(&segments[car->entry_seg]);
     
     while (car->current_seg != car->exit_seg) {
-    	if (queue[car->current_seg] == 0) {
-    		 pthread_mutex_lock(&noReader[car->current_seg]);
-    	}
-    	queue[car->current_seg]++;
-    	pthread_mutex_lock(&noWriter[car->current_seg]);
-        pthread_mutex_lock(&mutexes[NEXT(car->current_seg, num_of_segments)]); //priority
+        queue[car->current_seg]++;
+        pthread_mutex_lock(&mutexes[NEXT(car->current_seg, num_of_segments)]); 
         move_to_next_segment(car);
-        pthread_mutex_unlock(&noWriter[PREV(car->current_seg, num_of_segments)]);
-
-    	queue[car->current_seg]--;
-    	if (queue[car->current_seg] == 0) {
-    		 pthread_mutex_unlock(&noReader[PREV(car->current_seg, num_of_segments)]);
-    	}
+        queue[PREV(car->current_seg, num_of_segments)]--;
         pthread_mutex_unlock(&mutexes[PREV(car->current_seg, num_of_segments)]);
     }
 
