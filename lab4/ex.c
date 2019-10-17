@@ -47,23 +47,23 @@ void os_run(int initial_num_pages, page_table *pg_table){
         
         
         // process the signal, and update the page table as necessary
-    		//if (circularQueue[next_victim] == -1) {
-    			
-    			if (circularQueue[next_victim] != -1) {
-    				pg_table->entries[circularQueue[next_victim]].valid = 0;
-    			}
-    			disk_read(next_victim, requested_page);
-    			pg_table->entries[requested_page].valid = 1;
-    			pg_table->entries[requested_page].referenced = 0;
-        		pg_table->entries[requested_page].frame_index = next_victim;
-    			circularQueue[next_victim] = requested_page;
-    			next_victim = (next_victim + 1) % frame_size;
-    		//} else {
-
-    		//}
-
-        
-        //entries[requested_page].referenced = 1;
+    		
+		while (circularQueue[next_victim] != -1) { // frame not empty
+			if (pg_table->entries[circularQueue[next_victim]].referenced == 0) {
+				pg_table->entries[circularQueue[next_victim]].valid = 0;
+				break;
+			} else {
+				pg_table->entries[circularQueue[next_victim]].referenced = 0;
+			}
+			next_victim = (next_victim + 1) % frame_size;
+		}
+		disk_read(next_victim, requested_page);
+		pg_table->entries[requested_page].valid = 1;
+		pg_table->entries[requested_page].referenced = 0;
+		pg_table->entries[requested_page].frame_index = next_victim;
+		circularQueue[next_victim] = requested_page;
+		next_victim = (next_victim + 1) % frame_size;
+ 
         
         // tell the MMU that we are done updating the page table
         union sigval reply_value;
