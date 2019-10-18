@@ -23,6 +23,12 @@ void os_run(int initial_num_pages, page_table *pg_table){
     sigaddset(&signals, SIGUSR2);
     int frame_size = 1<<FRAME_BITS;
     int max_page_num = 1<<PAGE_BITS - 1;
+    int pageCreated[max_page_num];
+
+    for (int i = 0; i < max_page_num; i++) {
+        pageCreated[i] = 0;
+    }
+	
     
     
     //int frame_page = -1;
@@ -51,8 +57,9 @@ void os_run(int initial_num_pages, page_table *pg_table){
                     if (pg_table->entries[victim_page].referenced == 0 || pg_table->entries[victim_page].valid == 0) {
                         pg_table->entries[victim_page].valid = 0;
                         if (pg_table->entries[victim_page].dirty == 1) {
-                            if (pg_table->entries[requested_page].valid == 0) {
-                                disk_create(requested_page);
+                            if (pageCreated[victim_page] == 0) {
+                                disk_create(victim_page);
+				pageCreated[victim_page] = 1;
                             }
                             disk_write(next_victim, victim_page);
                         }
@@ -64,8 +71,9 @@ void os_run(int initial_num_pages, page_table *pg_table){
                     victim_page = circularQueue[next_victim];
                 }
 
-                if (pg_table->entries[requested_page].valid == 0) {
+                if (pageCreated[requested_page] == 0) {
                     disk_create(requested_page);
+		    pageCreated[requested_page] = 1;
                 }
                 disk_read(next_victim, requested_page);
                 pg_table->entries[requested_page].valid = 1;
@@ -88,7 +96,7 @@ void os_run(int initial_num_pages, page_table *pg_table){
             if (requested_page == -1) { //mmap
                 for (int i = initial_num_pages; i <= max_page_num; i++) {
                     if (pg_table->entries[i].valid == 0) {
-                        disk_create(i);
+                        //disk_create(i);
                         reply_value.sival_int = i;
                         new_page_num = i + 1; //next free page
                         break;
@@ -109,6 +117,7 @@ void os_run(int initial_num_pages, page_table *pg_table){
 
                 reply_value.sival_int = 0;
                 disk_delete(requested_page);
+		pageCreated[requested_page] = 0;
             }
 
         }
