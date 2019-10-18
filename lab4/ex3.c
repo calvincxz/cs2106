@@ -22,6 +22,7 @@ void os_run(int initial_num_pages, page_table *pg_table){
     sigaddset(&signals, SIGUSR1);
     sigaddset(&signals, SIGUSR2);
     int frame_size = 1<<FRAME_BITS;
+    int max_page_num = 1<<PAGE_BITS - 1;
     
     // create the pages in the disk first, because every page must be backed by the disk for this lab
     for (int i=0; i!=initial_num_pages; ++i) {
@@ -47,7 +48,7 @@ void os_run(int initial_num_pages, page_table *pg_table){
             if (requested_page == -1) break;
             
             // process the signal, and update the page table as necessary
-        	if (requested_page < initial_num_pages) {
+        	if (requested_page < new_page_num && requested_page <= max_page_num) {
         		int victim_page = circularQueue[next_victim];
         		while (victim_page != -1) { // frame not empty
 
@@ -83,13 +84,22 @@ void os_run(int initial_num_pages, page_table *pg_table){
             int requested_page = info.si_value.sival_int;
             
             if (requested_page == -1) { //mmap
-                disk_create(new_page_num);
-                reply_value.sival_int = new_page_num;
-                new_page_num++;
+		for (int i = initial_num_pages; i <= max_page_num; i++) {
+		    if (pg_table->entries[i].valid == 0) {
+
+			disk_create(i);
+                	reply_value.sival_int = i;
+		        new_page_num = i + 1; //next free page
+			break;
+  		    }
+		}
+                
+
             } else { //munmap
                 if (requested_page >= new_page_num) {
                     reply_value.sival_int = 1;
                     sigqueue(info.si_pid, SIGCONT, reply_value);
+		    continue;
                 }
 
                 if (pg_table->entries[requested_page].valid == 1) {
