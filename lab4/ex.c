@@ -50,7 +50,8 @@ void os_run(int initial_num_pages, page_table *pg_table){
     	if (requested_page < initial_num_pages) {
     		int victim_page = circularQueue[next_victim];
     		while (victim_page != -1) { // frame not empty
-				if (pg_table->entries[victim_page].referenced == 0) {
+
+				if (pg_table->entries[victim_page].referenced == 0 || pg_table->entries[victim_page].valid == 0) {
 					pg_table->entries[victim_page].valid = 0;
 					if (pg_table->entries[victim_page].dirty == 1) {
 						disk_write(next_victim, victim_page);
@@ -60,7 +61,9 @@ void os_run(int initial_num_pages, page_table *pg_table){
 					pg_table->entries[victim_page].referenced = 0;
 				}
 				next_victim = (next_victim + 1) % frame_size;
+                victim_page = circularQueue[next_victim]
 			}
+
 			disk_read(next_victim, requested_page);
 			pg_table->entries[requested_page].valid = 1;
 			pg_table->entries[requested_page].referenced = 0;
