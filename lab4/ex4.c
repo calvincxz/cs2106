@@ -22,23 +22,26 @@ void os_run(int initial_num_pages, page_table *pg_table){
     sigaddset(&signals, SIGUSR1);
     sigaddset(&signals, SIGUSR2);
     int frame_size = 1<<FRAME_BITS;
-    int max_page_num = 1<<PAGE_BITS - 1;
-    int pageCreated[max_page_num];
-
+    int max_page_num = (1<<PAGE_BITS) - 1;
+    int page_exist[max_page_num];
+    int page_really_created[max_page_num];
+    
     for (int i = 0; i < max_page_num; i++) {
-        pageCreated[i] = 0;
+        page_exist[i] = 0;
+        page_really_created[i] = 0;
     }
-	
-    
-    
-    //int frame_page = -1;
+
     int circularQueue[frame_size];
     int next_victim = 0;
-    int new_page_num = initial_num_pages;
 
     for (int i = 0; i < frame_size; i++) {
         circularQueue[i] = -1;
     }
+
+    for (int i=0; i!=initial_num_pages; ++i) {
+        page_exist[i] = 1;
+    }
+
     while (1) {
         siginfo_t info;
         sigwaitinfo(&signals, &info);
@@ -50,30 +53,35 @@ void os_run(int initial_num_pages, page_table *pg_table){
             if (requested_page == -1) break;
             
             // process the signal, and update the page table as necessary
-            if (requested_page < new_page_num && requested_page <= max_page_num) {
+            if (requested_page >= 0 && page_exist[requested_page] == 1) { // page exists
                 int victim_page = circularQueue[next_victim];
                 while (victim_page != -1) { // frame not empty
+                    if (pg_table->entries[victim_page].valid == 0) {
+                        break;
+                    }
 
-                    if (pg_table->entries[victim_page].referenced == 0 || pg_table->entries[victim_page].valid == 0) {
+                    if (pg_table->entries[victim_page].referenced == 0) {
                         pg_table->entries[victim_page].valid = 0;
+
                         if (pg_table->entries[victim_page].dirty == 1) {
-                            if (pageCreated[victim_page] == 0) {
+                            if (page_really_created[victim_page] == 0) {
                                 disk_create(victim_page);
-				pageCreated[victim_page] = 1;
+                                page_really_created[victim_page] = 1;
                             }
                             disk_write(next_victim, victim_page);
                         }
                         break;
+
                     } else { // referenced == 1
                         pg_table->entries[victim_page].referenced = 0;
+                        next_victim = (next_victim + 1) % frame_size;
+                        victim_page = circularQueue[next_victim];
                     }
-                    next_victim = (next_victim + 1) % frame_size;
-                    victim_page = circularQueue[next_victim];
-                }
 
-                if (pageCreated[requested_page] == 0) {
+                }
+                if (page_really_created[requested_page] == 0) {
                     disk_create(requested_page);
-		    pageCreated[requested_page] = 1;
+                    page_really_created[requested_page] = 1;
                 }
                 disk_read(next_victim, requested_page);
                 pg_table->entries[requested_page].valid = 1;
@@ -87,25 +95,23 @@ void os_run(int initial_num_pages, page_table *pg_table){
             } else {
                 reply_value.sival_int = 1;
             }
-            
+
             // tell the MMU that we are done updating the page table
-            
+
         } else { //sigusr2
             int requested_page = info.si_value.sival_int;
             
             if (requested_page == -1) { //mmap
-                for (int i = initial_num_pages; i <= max_page_num; i++) {
-                    if (pg_table->entries[i].valid == 0) {
-                        //disk_create(i);
+                for (int i = 0; i <= max_page_num; i++) {
+                    if (page_exist[i] == 0) { //find a non-existing page
                         reply_value.sival_int = i;
-                        new_page_num = i + 1; //next free page
                         break;
-                    }
+                    } 
                 }
-                
 
             } else { //munmap
-                if (requested_page >= new_page_num) {
+                
+                if (page_exist[requested_page] == 0) { 
                     reply_value.sival_int = 1;
                     sigqueue(info.si_pid, SIGCONT, reply_value);
                     continue;
@@ -117,7 +123,8 @@ void os_run(int initial_num_pages, page_table *pg_table){
 
                 reply_value.sival_int = 0;
                 disk_delete(requested_page);
-		pageCreated[requested_page] = 0;
+                page_exist[requested_page] = 0;
+                page_really_created[requested_page] = 0;
             }
 
         }
@@ -125,4 +132,4 @@ void os_run(int initial_num_pages, page_table *pg_table){
         sigqueue(info.si_pid, SIGCONT, reply_value);
     }
 }
-    
+
